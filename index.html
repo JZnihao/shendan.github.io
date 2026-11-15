@@ -33,8 +33,7 @@ var time = 0, lastTs = 0;
 
 var P = { cx:0, topY:0, baseY:0, treeH:0, maxR:0 };
 
-/* 生长更快：从 3600 缩短到 2600 */
-var GROW_MS = 2600;
+var GROW_MS = 2800;
 var growStart = 0, progress = 0, starDone = false, fwTimer = 9999;
 
 var glowCv = null, glowCtx = null, GS = 0.32;
@@ -45,22 +44,22 @@ var sparks = [], rockets = [], flashes = [];
 var glowCache = {};
 var snowSprite = null;
 
-/* ===== 白金色系（白金主调 + 金色点缀） ===== */
+/* ===== 白金主调（降低纯白比例，整体偏冷） ===== */
 var PLATINUM = [
-  '#ffffff','#fdfdff','#f6f8ff','#eef2ff','#e4eaff',
-  '#dce2f8','#f8f6ff','#eef0fa','#e8ecff','#fffef8'
+  '#eef2ff','#e4eaff','#dce4f8','#f0f3fc','#e8eeff',
+  '#d8e0f5','#ecf1ff','#e0e8ff','#f2f5ff','#eaefff'
 ];
 var GOLD_ACCENT = [
   '#ffd700','#ffca28','#ffc107','#ffe082','#ffb300',
-  '#ffdf6b','#fff3c4','#f5c542','#ffd766','#e8b923'
+  '#ffdf6b','#f5c542','#ffd766','#e8b923','#ffda5a'
 ];
 var BEAD_PLAT = [
-  '#ffffff','#f4f7ff','#e6ecff','#fffef6','#f8faff',
-  '#dde4ff','#ffffff','#eef2ff'
+  '#ffffff','#f0f4ff','#e6ecff','#ffffff','#eef2ff',
+  '#dde4ff','#f8faff','#e8eeff'
 ];
-var BEAD_GOLD = ['#ffd700','#ffe082','#ffca28','#fff3c4','#ffdf6b'];
+var BEAD_GOLD = ['#ffd700','#ffe082','#ffca28','#ffdf6b','#ffda5a'];
 
-/* ===== 高饱和彩灯（红/青/紫/绿/橙/粉/蓝） ===== */
+/* 高饱和彩灯 */
 var COLOR_LIGHTS = [
   '#ff2d6f','#00e5ff','#b06bff','#5dff00','#ff6a00',
   '#ff00d4','#00ff88','#40a0ff','#ff3355','#ffaa00',
@@ -81,21 +80,24 @@ function hexToRgb(hex){
   return [parseInt(hex.slice(0,2),16), parseInt(hex.slice(2,4),16), parseInt(hex.slice(4,6),16)];
 }
 
+/* 128px 高精度光晕：核心小而亮、外围衰减更快，避免糊成团 */
 function glowSprite(color){
   var sp = glowCache[color];
   if (sp) return sp;
-  var S = 64;
+  var S = 128;
   sp = document.createElement('canvas');
   sp.width = S; sp.height = S;
   var g = sp.getContext('2d');
   var c = hexToRgb(color), r = c[0], gg = c[1], b = c[2];
 
   var rg = g.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);
-  rg.addColorStop(0,    'rgba(255,255,255,1)');
-  rg.addColorStop(0.06, 'rgba('+r+','+gg+','+b+',0.98)');
-  rg.addColorStop(0.18, 'rgba('+r+','+gg+','+b+',0.62)');
-  rg.addColorStop(0.40, 'rgba('+r+','+gg+','+b+',0.18)');
-  rg.addColorStop(0.68, 'rgba('+r+','+gg+','+b+',0.04)');
+  rg.addColorStop(0,    'rgba(255,255,255,0.95)');
+  rg.addColorStop(0.030,'rgba('+r+','+gg+','+b+',0.92)');
+  rg.addColorStop(0.085,'rgba('+r+','+gg+','+b+',0.62)');
+  rg.addColorStop(0.18, 'rgba('+r+','+gg+','+b+',0.28)');
+  rg.addColorStop(0.34, 'rgba('+r+','+gg+','+b+',0.09)');
+  rg.addColorStop(0.55, 'rgba('+r+','+gg+','+b+',0.022)');
+  rg.addColorStop(0.78, 'rgba('+r+','+gg+','+b+',0.005)');
   rg.addColorStop(1,    'rgba('+r+','+gg+','+b+',0)');
   g.fillStyle = rg;
   g.beginPath();
@@ -113,8 +115,8 @@ function makeSnowSprite(){
   var cx = S/2, cy = S/2;
   var rg = g.createRadialGradient(cx,cy,0,cx,cy,S/2);
   rg.addColorStop(0,   'rgba(255,255,255,1)');
-  rg.addColorStop(0.20,'rgba(248,250,255,0.62)');
-  rg.addColorStop(0.48,'rgba(224,232,255,0.17)');
+  rg.addColorStop(0.18,'rgba(248,250,255,0.58)');
+  rg.addColorStop(0.44,'rgba(224,232,255,0.14)');
   rg.addColorStop(1,   'rgba(200,215,255,0)');
   g.fillStyle = rg;
   g.beginPath();
@@ -129,7 +131,7 @@ function buildScene(){
   var baseY = H * 0.795;
   var topY  = H * 0.150;
   var treeH = baseY - topY;
-  var maxR  = Math.min(W * 0.275, treeH * 0.32);
+  var maxR  = Math.min(W * 0.285, treeH * 0.33);
 
   P.cx = cx; P.topY = topY; P.baseY = baseY; P.treeH = treeH; P.maxR = maxR;
 
@@ -137,106 +139,101 @@ function buildScene(){
   snow = []; bgStars = [];
   sparks = []; rockets = []; flashes = [];
 
-  var density = Math.round(Math.max(1300, Math.min(2600, W * H / 600)));
-  var LAYERS = 11;
+  /* ============ 枝条结构树体 ============ */
+  var LAYERS = 8;
+  var BRANCHES = 16;
+  var PTS = 18;
 
-  /* ---------- 分层锥形树体（白金主调 + 金色点缀） ---------- */
   for (var L = 0; L < LAYERS; L++){
-    var hBot = L / LAYERS;
-    var hTop = (L + 1) / LAYERS;
-    var cnt = Math.floor(density / LAYERS * (1 + 0.55 * (1 - L / LAYERS)));
+    var hTop = L / LAYERS;
+    var hBot = (L + 1) / LAYERS;
+    var extra = Math.floor((1 - L / LAYERS) * 4);
 
-    for (var i = 0; i < cnt; i++){
-      var t = Math.pow(Math.random(), 0.46);
-      var h = hBot + (hTop - hBot) * t;
-      var y = baseY - h * treeH;
+    for (var B = 0; B < BRANCHES + extra; B++){
+      var totalB = BRANCHES + extra;
+      var baseAng = (B / totalB) * TAU + L * 0.24 + (Math.random() - 0.5) * 0.08;
 
-      var R0 = maxR * Math.pow(1 - h, 1.04);
-      var skirt = 1 + 0.34 * Math.pow(t, 1.55);
-      var R = R0 * skirt;
+      var lenMul = 0.82 + Math.random() * 0.18;
+      var curve  = (Math.random() - 0.5) * 0.5;
+      var droop  = 0.10 + Math.random() * 0.10;
 
-      var rr = R * Math.pow(Math.random(), 0.38);
-      var ang = Math.random() * TAU;
+      for (var j = 0; j < PTS; j++){
+        var t = j / (PTS - 1);
+        var h = hTop + (hBot - hTop) * t * 0.58;
+        var maxRAtH = maxR * Math.pow(1 - h, 1.06);
+        var r = maxRAtH * (0.10 + 0.90 * t) * lenMul;
+        var drop = maxRAtH * droop * Math.pow(t, 1.5);
+        var y = baseY - h * treeH + drop;
+        var ang = baseAng + curve * t * 0.6;
 
-      if (t > 0.7 && rr > R * 0.8){
-        rr *= 1 + (Math.random() - 0.5) * 0.12;
+        r  += (Math.random() - 0.5) * maxRAtH * 0.045;
+        y  += (Math.random() - 0.5) * treeH * 0.010;
+        ang += (Math.random() - 0.5) * 0.07;
+
+        var edge = t;
+        var size = 0.50 + edge * 0.95 + Math.random() * 0.35;
+
+        /* 内部更暗，边缘稍亮，对比明显 */
+        var bright = 0.05 + 0.50 * Math.pow(edge, 1.6);
+
+        var isGold = Math.random() < 0.06 + 0.18 * edge;
+        var arr = isGold ? GOLD_ACCENT : PLATINUM;
+        var color = arr[(Math.random() * arr.length) | 0];
+
+        treePts.push({
+          r: r, ang: ang, y: y,
+          size: size,
+          bright: bright * (isGold ? 1.30 : 1),
+          isGlow: bright > 0.34 || isGold,
+          sprite: glowSprite(color),
+          phase: Math.random() * TAU,
+          tw: 0.0010 + Math.random() * 0.0024,
+          reveal: h * 0.82 + Math.random() * 0.02
+        });
       }
 
-      var edge = Math.min(1, rr / R);
-      var bright = 0.10 + 0.58 * Math.pow(edge, 1.75);
-      if (t > 0.88) bright *= 1.50;
+      /* 枝条末端亮点（这是树轮廓的关键，要亮） */
+      var eh = hTop + (hBot - hTop) * 0.58;
+      var er = maxR * Math.pow(1 - eh, 1.06) * lenMul;
+      var ed = maxR * Math.pow(1 - eh, 1.06) * droop;
+      var ey = baseY - eh * treeH + ed;
 
-      var isGold = Math.random() < 0.10 + 0.10 * edge;
-      var col = isGold
-        ? GOLD_ACCENT[(Math.random() * GOLD_ACCENT.length) | 0]
-        : PLATINUM[(Math.random() * PLATINUM.length) | 0];
-
-      treePts.push({
-        r: rr, ang: ang, y: y,
-        size: (0.72 + Math.random() * 1.05) * (0.72 + 0.60 * edge),
-        bright: bright * (isGold ? 1.15 : 1),
-        isGlow: bright > 0.34 || isGold,
-        sprite: glowSprite(col),
-        phase: Math.random() * TAU,
-        tw: 0.0010 + Math.random() * 0.0024,
-        reveal: h * 0.85 + Math.random() * 0.018
-      });
-    }
-  }
-
-  /* ---------- 每层底边亮珠（白金 + 金色） ---------- */
-  for (var L2 = 0; L2 < LAYERS; L2++){
-    var hE = L2 / LAYERS;
-    var yE = baseY - hE * treeH;
-    var RE = maxR * Math.pow(1 - hE, 1.04) * 1.34;
-
-    var nE = Math.round(Math.max(22, RE * 0.55));
-    for (var j = 0; j < nE; j++){
-      var angE = Math.random() * TAU;
-      var rrE = RE * (0.93 + Math.random() * 0.13);
-      rrE *= 1 + (Math.random() - 0.5) * 0.09;
-
-      var r2 = Math.random();
-      var edgeCol;
-      if (r2 < 0.25){
-        edgeCol = COLOR_LIGHTS[(Math.random() * COLOR_LIGHTS.length) | 0];
-      } else if (r2 < 0.55){
-        edgeCol = BEAD_GOLD[(Math.random() * BEAD_GOLD.length) | 0];
-      } else {
-        edgeCol = BEAD_PLAT[(Math.random() * BEAD_PLAT.length) | 0];
-      }
+      var isGoldTip = Math.random() < 0.28;
+      var tipCol = isGoldTip
+        ? BEAD_GOLD[(Math.random() * BEAD_GOLD.length) | 0]
+        : BEAD_PLAT[(Math.random() * BEAD_PLAT.length) | 0];
 
       treePts.push({
-        r: rrE, ang: angE,
-        y: yE + (Math.random() - 0.5) * treeH * 0.009,
-        size: 1.0 + Math.random() * 1.05,
-        bright: 0.86 + Math.random() * 0.28,
+        r: er + (Math.random() - 0.5) * maxR * 0.02,
+        ang: baseAng + curve * 0.3 + (Math.random() - 0.5) * 0.04,
+        y: ey + (Math.random() - 0.5) * treeH * 0.004,
+        size: 1.55 + Math.random() * 0.80,
+        bright: 0.86 + Math.random() * 0.16,
         isGlow: true,
-        sprite: glowSprite(edgeCol),
+        sprite: glowSprite(tipCol),
         phase: Math.random() * TAU,
-        tw: 0.0015 + Math.random() * 0.003,
-        reveal: hE * 0.85 + 0.01
+        tw: 0.0018 + Math.random() * 0.0028,
+        reveal: eh * 0.82 + 0.01
       });
     }
   }
 
-  /* ---------- 螺旋灯带：彩色为主 + 金色/白金穿插 ---------- */
+  /* ============ 螺旋灯带：彩色为主 ============ */
   var BEADS = Math.round(Math.max(170, Math.min(260, W * 0.21)));
   var turns = 5.8;
   for (var b = 0; b < BEADS; b++){
     var bt = b / BEADS;
-    var bh = bt * 0.935;
+    var bh = bt * 0.93;
     var bAng = bt * turns * TAU;
-    var bR = maxR * Math.pow(1 - bh, 1.04) * 0.945;
+    var bR = maxR * Math.pow(1 - bh, 1.06) * 0.945;
     var bY = baseY - bh * treeH;
 
     var r3 = Math.random();
     var beadCol, isColor = false, isGold = false;
-
-    if (r3 < 0.68){
+    if (r3 < 0.72){
       beadCol = COLOR_LIGHTS[(Math.random() * COLOR_LIGHTS.length) | 0];
       isColor = true;
-    } else if (r3 < 0.88){
+    } else if (r3 < 0.92){
       beadCol = BEAD_GOLD[(Math.random() * BEAD_GOLD.length) | 0];
       isGold = true;
     } else {
@@ -245,26 +242,26 @@ function buildScene(){
 
     beads.push({
       t: bt, r: bR, ang: bAng, y: bY,
-      size: isColor ? 3.0 + Math.random() * 1.8 : 2.3 + Math.random() * 1.3,
+      size: isColor ? 3.1 + Math.random() * 1.7 : 2.4 + Math.random() * 1.2,
       sprite: glowSprite(beadCol),
       color: beadCol,
       isGold: isGold, isColor: isColor,
       phase: Math.random() * TAU,
-      reveal: bt * 0.885
+      reveal: bt * 0.88
     });
   }
 
-  /* ---------- 散布在树上的彩色小灯（跳跃闪烁） ---------- */
-  var CN = Math.round(Math.max(55, Math.min(95, W * 0.062)));
+  /* ============ 散布彩灯 ============ */
+  var CN = Math.round(Math.max(60, Math.min(100, W * 0.065)));
   for (var c2 = 0; c2 < CN; c2++){
     var ch = Math.pow(Math.random(), 0.80) * 0.95;
-    var cR = maxR * Math.pow(1 - ch, 1.04) * (0.42 + 0.55 * Math.random());
+    var cR = maxR * Math.pow(1 - ch, 1.06) * (0.40 + 0.55 * Math.random());
     var cCol = COLOR_LIGHTS[(Math.random() * COLOR_LIGHTS.length) | 0];
 
     colorLights.push({
       r: cR, ang: Math.random() * TAU,
       y: baseY - ch * treeH,
-      size: 3.0 + Math.random() * 2.4,
+      size: 3.1 + Math.random() * 2.3,
       sprite: glowSprite(cCol),
       phase: Math.random() * TAU,
       speed: 0.8 + Math.random() * 2.0,
@@ -272,18 +269,18 @@ function buildScene(){
     });
   }
 
-  /* ---------- 彩球：彩色 + 金色 + 白金混合 ---------- */
-  var BALLS = Math.round(Math.max(28, Math.min(46, W * 0.034)));
+  /* ============ 彩球 ============ */
+  var BALLS = Math.round(Math.max(30, Math.min(48, W * 0.036)));
   for (var k = 0; k < BALLS; k++){
     var bh2 = Math.pow(Math.random(), 0.85) * 0.92;
-    var bR2 = maxR * Math.pow(1 - bh2, 1.04) * (0.70 + 0.24 * Math.random());
+    var bR2 = maxR * Math.pow(1 - bh2, 1.06) * (0.70 + 0.24 * Math.random());
 
     var rb = Math.random();
     var ballCol, isGoldBall = false, isColorBall = false;
-    if (rb < 0.45){
+    if (rb < 0.48){
       ballCol = COLOR_LIGHTS[(Math.random() * COLOR_LIGHTS.length) | 0];
       isColorBall = true;
-    } else if (rb < 0.78){
+    } else if (rb < 0.80){
       ballCol = GOLD_ACCENT[(Math.random() * GOLD_ACCENT.length) | 0];
       isGoldBall = true;
     } else {
@@ -293,7 +290,7 @@ function buildScene(){
     balls.push({
       r: bR2, ang: Math.random() * TAU,
       y: baseY - bh2 * treeH,
-      size: 3.4 + Math.random() * 3.2,
+      size: 3.4 + Math.random() * 3.0,
       sprite: glowSprite(ballCol),
       isGold: isGoldBall, isColor: isColorBall,
       phase: Math.random() * TAU,
@@ -301,21 +298,21 @@ function buildScene(){
     });
   }
 
-  /* ---------- 星芒 ---------- */
-  for (var s = 0; s < 24; s++){
+  /* ============ 星芒 ============ */
+  for (var s = 0; s < 26; s++){
     var hs = Math.pow(Math.random(), 0.85) * 0.95;
-    var Rs = maxR * Math.pow(1 - hs, 1.04) * (0.55 + 0.42 * Math.random());
+    var Rs = maxR * Math.pow(1 - hs, 1.06) * (0.55 + 0.42 * Math.random());
     sparkles.push({
       r: Rs, ang: Math.random() * TAU,
       y: baseY - hs * treeH,
       phase: Math.random() * TAU,
       speed: 0.7 + Math.random() * 1.6,
       reveal: hs * 0.85,
-      isGold: Math.random() < 0.35
+      isGold: Math.random() < 0.40
     });
   }
 
-  /* ---------- 雪花 ---------- */
+  /* ============ 雪花 ============ */
   var sn = Math.round(Math.max(200, Math.min(400, W * H / 4200)));
   for (var p = 0; p < sn; p++){
     snow.push({
@@ -326,12 +323,12 @@ function buildScene(){
       drift: 0.35 + Math.random() * 1.05,
       driftSpeed: 0.6 + Math.random() * 0.8,
       phase: Math.random() * TAU,
-      alpha: 0.24 + Math.random() * 0.50,
+      alpha: 0.22 + Math.random() * 0.46,
       tw: 0.0015 + Math.random() * 0.003
     });
   }
 
-  /* ---------- 背景星 ---------- */
+  /* ============ 背景星 ============ */
   var st = Math.round(Math.max(80, Math.min(180, W * H / 10000)));
   for (var q = 0; q < st; q++){
     bgStars.push({
@@ -376,13 +373,13 @@ function resize(){
 /* ================= 背景 ================= */
 function drawBgStars(){
   ctx.globalCompositeOperation = 'lighter';
-  var spPlat = glowSprite('#e8eeff');
+  var spPlat = glowSprite('#dbe4ff');
   var spGold = glowSprite('#ffe082');
   for (var i = 0; i < bgStars.length; i++){
     var s = bgStars[i];
     var tw = 0.28 + 0.72 * (0.5 + 0.5 * Math.sin(time * 0.001 * s.speed + s.phase));
-    ctx.globalAlpha = tw * (s.isGold ? 0.62 : 0.52);
-    var r = s.r * 3.0;
+    ctx.globalAlpha = tw * (s.isGold ? 0.55 : 0.42);
+    var r = s.r * 3.2;
     var sp = s.isGold ? spGold : spPlat;
     ctx.drawImage(sp, s.x - r, s.y - r, r * 2, r * 2);
   }
@@ -397,11 +394,11 @@ function drawGround(){
   ctx.save();
   ctx.translate(P.cx, P.baseY);
   ctx.scale(1, 0.26);
-  var R = P.maxR * 2.9;
+  var R = P.maxR * 3.0;
   var g = ctx.createRadialGradient(0,0,0, 0,0,R);
-  g.addColorStop(0,    'rgba(255,245,220,' + (0.30 * k) + ')');
-  g.addColorStop(0.32, 'rgba(240,220,160,' + (0.14 * k) + ')');
-  g.addColorStop(0.62, 'rgba(200,215,255,' + (0.07 * k) + ')');
+  g.addColorStop(0,    'rgba(255,245,220,' + (0.24 * k) + ')');
+  g.addColorStop(0.30, 'rgba(240,220,160,' + (0.11 * k) + ')');
+  g.addColorStop(0.60, 'rgba(200,215,255,' + (0.055 * k) + ')');
   g.addColorStop(1,    'rgba(0,0,0,0)');
   ctx.fillStyle = g;
   ctx.beginPath();
@@ -414,16 +411,17 @@ function drawGround(){
 /* ================= 树体 ================= */
 function drawTree(c, isGlow){
   var cx = P.cx;
-  var rot = time * 0.00021;
+  var rot = time * 0.00020;
 
   if (isGlow){
-    var amb = 0.06 + 0.10 * progress;
+    /* 氛围光大幅调暗，避免糊 */
+    var amb = 0.025 + 0.055 * progress;
     var midY = P.topY + P.treeH * 0.58;
-    var R0 = P.treeH * 0.92;
+    var R0 = P.treeH * 0.90;
     var g = c.createRadialGradient(cx, midY, 0, cx, midY, R0);
-    g.addColorStop(0,   'rgba(232,238,255,' + amb.toFixed(3) + ')');
-    g.addColorStop(0.42,'rgba(255,235,180,' + (amb * 0.55).toFixed(3) + ')');
-    g.addColorStop(0.7, 'rgba(200,215,255,' + (amb * 0.20).toFixed(3) + ')');
+    g.addColorStop(0,   'rgba(220,230,255,' + amb.toFixed(3) + ')');
+    g.addColorStop(0.42,'rgba(255,230,170,' + (amb * 0.45).toFixed(3) + ')');
+    g.addColorStop(0.7, 'rgba(190,205,255,' + (amb * 0.15).toFixed(3) + ')');
     g.addColorStop(1,   'rgba(160,180,255,0)');
     c.globalAlpha = 1;
     c.fillStyle = g;
@@ -438,19 +436,26 @@ function drawTree(c, isGlow){
     if (isGlow && !p.isGlow) continue;
 
     var age = progress - p.reveal;
-    var birth = 1 + 2.0 * Math.exp(-age * 26);
+    var birth = 1 + 2.2 * Math.exp(-age * 26);
 
     var a = p.ang + rot;
     var z = (Math.sin(a) + 1) * 0.5;
-    var depth = 0.30 + 0.70 * z;
+    var depth = 0.22 + 0.78 * z;
     var x = cx + p.r * Math.cos(a);
 
-    var tw = 0.86 + 0.14 * Math.sin(time * p.tw + p.phase);
+    var tw = 0.82 + 0.18 * Math.sin(time * p.tw + p.phase);
     var al = p.bright * depth * tw * birth;
-    if (al < 0.010) continue;
-    if (al > 0.95) al = 0.95;
+    if (al < 0.008) continue;
+    /* 硬上限压低整体亮度，防止糊 */
+    if (al > 0.70) al = 0.70;
 
-    var sz = p.size * depth * 3.4 * (1 + (birth - 1) * 0.40);
+    var sz = p.size * depth * 2.7 * (1 + (birth - 1) * 0.40);
+
+    if (!isGlow){
+      /* 淡光晕，非常克制 */
+      c.globalAlpha = al * 0.10;
+      c.drawImage(p.sprite, x - sz * 1.9, p.y - sz * 1.9, sz * 3.8, sz * 3.8);
+    }
     c.globalAlpha = al;
     c.drawImage(p.sprite, x - sz, p.y - sz, sz * 2, sz * 2);
   }
@@ -459,8 +464,9 @@ function drawTree(c, isGlow){
 /* ================= 螺旋灯带 ================= */
 function drawBeads(c, isGlow){
   var cx = P.cx;
-  var rot = time * 0.00021;
+  var rot = time * 0.00020;
 
+  /* 灯线 */
   var prevX = 0, prevY = 0, hasPrev = false;
   for (var i = 0; i < beads.length; i++){
     var b = beads[i];
@@ -470,7 +476,7 @@ function drawBeads(c, isGlow){
     var depth = 0.32 + 0.68 * z;
     var x = cx + b.r * Math.cos(a);
     if (hasPrev){
-      c.globalAlpha = 0.14 * (0.4 + 0.6 * depth);
+      c.globalAlpha = 0.11 * (0.4 + 0.6 * depth);
       c.strokeStyle = b.color;
       c.lineWidth = 1;
       c.beginPath();
@@ -481,12 +487,13 @@ function drawBeads(c, isGlow){
     prevX = x; prevY = b.y; hasPrev = true;
   }
 
+  /* 灯珠 */
   for (var j = 0; j < beads.length; j++){
     var bd = beads[j];
     if (progress < bd.reveal) continue;
 
     var age = progress - bd.reveal;
-    var birth = 1 + 1.9 * Math.exp(-age * 24);
+    var birth = 1 + 2.0 * Math.exp(-age * 24);
 
     var a2 = bd.ang + rot;
     var z2 = (Math.sin(a2) + 1) * 0.5;
@@ -495,45 +502,47 @@ function drawBeads(c, isGlow){
 
     var flow = 0.5 + 0.5 * Math.sin(time * 0.0038 - bd.t * 18.0);
     var flick = 0.5 + 0.5 * Math.sin(time * 0.0085 + bd.phase);
+    var flash = bd.isColor ? (0.45 + 0.55 * Math.pow(flick, 0.6)) : flick;
 
-    /* 彩色灯珠闪烁更强 */
-    var flash = bd.isColor ? (0.5 + 0.5 * Math.pow(flick, 0.6)) : flick;
-
-    var al = (0.34 + 0.66 * flow) * (0.62 + 0.38 * flash) * d2 * birth;
-    if (al > 1) al = 1;
+    var al = (0.34 + 0.66 * flow) * (0.60 + 0.40 * flash) * d2 * birth;
+    if (al > 0.92) al = 0.92;
 
     var boost = bd.isColor ? 1.22 : (bd.isGold ? 1.15 : 1.0);
-    var sz = bd.size * d2 * 3.7 * boost * (0.80 + 0.50 * flow) * (1 + (birth - 1) * 0.38);
+    var sz = bd.size * d2 * 3.5 * boost * (0.80 + 0.50 * flow) * (1 + (birth - 1) * 0.38);
+
+    if (!isGlow){
+      c.globalAlpha = al * 0.16;
+      c.drawImage(bd.sprite, x2 - sz * 1.9, bd.y - sz * 1.9, sz * 3.8, sz * 3.8);
+    }
     c.globalAlpha = al;
     c.drawImage(bd.sprite, x2 - sz, bd.y - sz, sz * 2, sz * 2);
   }
 }
 
-/* ================= 散布彩灯（跳跃闪烁，非常醒目） ================= */
+/* ================= 散布彩灯 ================= */
 function drawColorLights(c){
   var cx = P.cx;
-  var rot = time * 0.00021;
+  var rot = time * 0.00020;
 
   for (var i = 0; i < colorLights.length; i++){
     var cl = colorLights[i];
     if (progress < cl.reveal) continue;
 
     var age = progress - cl.reveal;
-    var birth = 1 + 2.2 * Math.exp(-age * 20);
+    var birth = 1 + 2.4 * Math.exp(-age * 20);
 
     var a = cl.ang + rot;
     var z = (Math.sin(a) + 1) * 0.5;
-    var depth = 0.42 + 0.58 * z;
+    var depth = 0.40 + 0.60 * z;
     var x = cx + cl.r * Math.cos(a);
 
-    /* 强闪烁，周期性爆亮 */
     var v = 0.5 + 0.5 * Math.sin(time * 0.0022 * cl.speed + cl.phase);
-    var kk = Math.pow(v, 2.2);
+    var kk = Math.pow(v, 2.0);
 
     var al = (0.28 + 0.72 * kk) * depth * birth;
-    if (al > 1) al = 1;
+    if (al > 0.95) al = 0.95;
 
-    var sz = cl.size * depth * 3.9 * (0.72 + 0.55 * kk) * (1 + (birth - 1) * 0.38);
+    var sz = cl.size * depth * 3.8 * (0.70 + 0.55 * kk) * (1 + (birth - 1) * 0.40);
     c.globalAlpha = al;
     c.drawImage(cl.sprite, x - sz, cl.y - sz, sz * 2, sz * 2);
   }
@@ -542,26 +551,31 @@ function drawColorLights(c){
 /* ================= 彩球 ================= */
 function drawBalls(c, isGlow){
   var cx = P.cx;
-  var rot = time * 0.00021;
+  var rot = time * 0.00020;
 
   for (var k = 0; k < balls.length; k++){
     var o = balls[k];
     if (progress < o.reveal) continue;
 
     var age = progress - o.reveal;
-    var birth = 1 + 1.4 * Math.exp(-age * 20);
+    var birth = 1 + 1.5 * Math.exp(-age * 20);
 
     var a = o.ang + rot;
     var z = (Math.sin(a) + 1) * 0.5;
-    var d = 0.48 + 0.52 * z;
+    var d = 0.46 + 0.54 * z;
     var x = cx + o.r * Math.cos(a);
 
     var tw = 0.58 + 0.42 * Math.sin(time * 0.004 + o.phase);
     var al = (0.42 + 0.58 * tw) * d * birth;
-    if (al > 1) al = 1;
+    if (al > 0.90) al = 0.90;
 
-    var boost = o.isColor ? 1.20 : (o.isGold ? 1.18 : 1.0);
-    var sz = o.size * d * 3.6 * boost * (1 + (birth - 1) * 0.42);
+    var boost = o.isColor ? 1.22 : (o.isGold ? 1.18 : 1.0);
+    var sz = o.size * d * 3.5 * boost * (1 + (birth - 1) * 0.42);
+
+    if (!isGlow){
+      c.globalAlpha = al * 0.18;
+      c.drawImage(o.sprite, x - sz * 1.8, o.y - sz * 1.8, sz * 3.6, sz * 3.6);
+    }
     c.globalAlpha = al;
     c.drawImage(o.sprite, x - sz, o.y - sz, sz * 2, sz * 2);
   }
@@ -569,8 +583,8 @@ function drawBalls(c, isGlow){
 
 /* ================= 星芒 ================= */
 function drawSparkles(c){
-  var rot = time * 0.00021;
-  var spWhite = glowSprite('#ffffff');
+  var rot = time * 0.00020;
+  var spWhite = glowSprite('#f2f6ff');
   var spGold  = glowSprite('#ffe082');
 
   for (var i = 0; i < sparkles.length; i++){
@@ -588,15 +602,15 @@ function drawSparkles(c){
 
     var sp = s.isGold ? spGold : spWhite;
 
-    c.globalAlpha = k * depth * 0.98;
-    var r = (11 + 24 * k) * depth;
+    c.globalAlpha = k * depth * 0.82;
+    var r = (12 + 26 * k) * depth;
     c.drawImage(sp, x - r, s.y - r, r * 2, r * 2);
 
-    if (k > 0.45){
-      var len = 20 * k * depth;
-      var al = (k - 0.45) / 0.55;
-      c.globalAlpha = al * 0.85;
-      c.strokeStyle = s.isGold ? '#ffe9a8' : '#ffffff';
+    if (k > 0.42){
+      var len = 22 * k * depth;
+      var al = (k - 0.42) / 0.58;
+      c.globalAlpha = al * 0.68;
+      c.strokeStyle = s.isGold ? '#ffe9a8' : '#eaf0ff';
       c.lineWidth = 1.2;
       c.beginPath();
       c.moveTo(x - len, s.y); c.lineTo(x + len, s.y);
@@ -608,7 +622,7 @@ function drawSparkles(c){
 
 /* ================= 上升火星 ================= */
 function updateEmbers(dt){
-  if (Math.random() < 0.5 * dt && embers.length < 100){
+  if (Math.random() < 0.55 * dt && embers.length < 110){
     var isGold = Math.random() < 0.45;
     embers.push({
       x: P.cx + (Math.random() - 0.5) * P.maxR * 2.7,
@@ -638,7 +652,7 @@ function drawEmbers(c){
     var e = embers[i];
     var al = e.life * (0.55 + 0.45 * Math.sin(time * 0.004 + e.phase * 2));
     if (al < 0.03) continue;
-    c.globalAlpha = al;
+    c.globalAlpha = al * 0.75;
     var r = e.size * 3.8;
     c.drawImage(e.sprite, e.x - r, e.y - r, r * 2, r * 2);
   }
@@ -648,41 +662,41 @@ function drawEmbers(c){
 function drawFront(c){
   if (progress >= 0.995) return;
 
-  var h = Math.min(1, progress / 0.885);
+  var h = Math.min(1, progress / 0.88);
   var fade = 1;
-  if (progress > 0.885) fade = Math.max(0, 1 - (progress - 0.885) / 0.11);
+  if (progress > 0.88) fade = Math.max(0, 1 - (progress - 0.88) / 0.11);
 
-  var rot = time * 0.00021;
-  var sp = glowSprite('#fffef8');
+  var rot = time * 0.00020;
+  var sp = glowSprite('#f6f8ff');
   var turns = 5.8;
 
-  for (var k = 0; k < 12; k++){
-    var hk = h - k * 0.020;
+  for (var k = 0; k < 14; k++){
+    var hk = h - k * 0.018;
     if (hk < 0) break;
-    var Rk = P.maxR * Math.pow(1 - hk, 1.04) * 0.945;
+    var Rk = P.maxR * Math.pow(1 - hk, 1.06) * 0.945;
     var angk = hk * turns * TAU + rot;
     var xk = P.cx + Rk * Math.cos(angk);
     var yk = P.baseY - hk * P.treeH;
-    var ak = (1 - k / 12) * 0.60 * fade;
-    var rk = (14 - k * 0.95) * (1 - k / 14);
+    var ak = (1 - k / 14) * 0.50 * fade;
+    var rk = (15 - k * 0.95) * (1 - k / 16);
     if (rk <= 0.5) continue;
     c.globalAlpha = ak;
     c.drawImage(sp, xk - rk, yk - rk, rk * 2, rk * 2);
   }
 
-  var R = P.maxR * Math.pow(1 - h, 1.04) * 0.945;
+  var R = P.maxR * Math.pow(1 - h, 1.06) * 0.945;
   var ang = h * turns * TAU + rot;
   var x = P.cx + R * Math.cos(ang);
   var y = P.baseY - h * P.treeH;
 
-  var halo = 32 + 8 * Math.sin(time * 0.01);
-  c.globalAlpha = 0.92 * fade;
+  var halo = 30 + 8 * Math.sin(time * 0.01);
+  c.globalAlpha = 0.80 * fade;
   c.drawImage(sp, x - halo, y - halo, halo * 2, halo * 2);
 
-  c.globalAlpha = fade;
+  c.globalAlpha = 0.90 * fade;
   c.fillStyle = '#ffffff';
   c.beginPath();
-  c.arc(x, y, 3.8, 0, TAU);
+  c.arc(x, y, 3.2, 0, TAU);
   c.fill();
 }
 
@@ -692,17 +706,17 @@ function drawStar(c, starT){
 
   var ease = 1 - Math.pow(1 - starT, 3);
   var pulse = 0.86 + 0.14 * Math.sin(time * 0.0032);
-  var R = Math.max(55, P.treeH * 0.30) * ease * pulse;
+  var R = Math.max(56, P.treeH * 0.30) * ease * pulse;
 
   var cx = P.cx;
   var cy = P.topY - P.treeH * 0.012;
 
   var g = c.createRadialGradient(cx, cy, 0, cx, cy, R * 4.2);
-  g.addColorStop(0,    'rgba(255,255,255,' + (0.68 * ease).toFixed(3) + ')');
-  g.addColorStop(0.12, 'rgba(255,248,225,' + (0.34 * ease).toFixed(3) + ')');
-  g.addColorStop(0.34, 'rgba(255,232,160,' + (0.14 * ease).toFixed(3) + ')');
-  g.addColorStop(0.62, 'rgba(230,225,255,' + (0.05 * ease).toFixed(3) + ')');
-  g.addColorStop(1,    'rgba(200,205,255,0)');
+  g.addColorStop(0,    'rgba(255,255,255,' + (0.52 * ease).toFixed(3) + ')');
+  g.addColorStop(0.14, 'rgba(255,248,225,' + (0.24 * ease).toFixed(3) + ')');
+  g.addColorStop(0.36, 'rgba(255,232,160,' + (0.09 * ease).toFixed(3) + ')');
+  g.addColorStop(0.64, 'rgba(220,220,255,' + (0.028 * ease).toFixed(3) + ')');
+  g.addColorStop(1,    'rgba(190,200,255,0)');
   c.globalAlpha = 1;
   c.fillStyle = g;
   c.beginPath();
@@ -714,12 +728,12 @@ function drawStar(c, starT){
   c.rotate(time * 0.00035);
   for (var i = 0; i < 16; i++){
     var long = (i % 2 === 0);
-    var len = R * (long ? 1.70 : 0.82);
-    var w   = Math.max(1.3, R * (long ? 0.070 : 0.038));
+    var len = R * (long ? 1.72 : 0.82);
+    var w   = Math.max(1.2, R * (long ? 0.070 : 0.036));
     var lg = c.createLinearGradient(0, 0, 0, -len);
-    lg.addColorStop(0,   'rgba(255,255,255,' + (1.0 * ease).toFixed(3) + ')');
-    lg.addColorStop(0.30,'rgba(255,250,225,' + (0.55 * ease).toFixed(3) + ')');
-    lg.addColorStop(0.65,'rgba(255,225,150,' + (0.16 * ease).toFixed(3) + ')');
+    lg.addColorStop(0,   'rgba(255,255,255,' + (0.95 * ease).toFixed(3) + ')');
+    lg.addColorStop(0.28,'rgba(255,250,225,' + (0.42 * ease).toFixed(3) + ')');
+    lg.addColorStop(0.62,'rgba(255,225,150,' + (0.10 * ease).toFixed(3) + ')');
     lg.addColorStop(1,   'rgba(255,210,120,0)');
     c.fillStyle = lg;
     c.beginPath();
@@ -732,26 +746,26 @@ function drawStar(c, starT){
   }
   c.restore();
 
-  var cg = c.createRadialGradient(cx, cy, 0, cx, cy, R * 0.62);
+  var cg = c.createRadialGradient(cx, cy, 0, cx, cy, R * 0.58);
   cg.addColorStop(0,   'rgba(255,255,255,' + ease.toFixed(3) + ')');
-  cg.addColorStop(0.35,'rgba(255,250,235,' + (0.88 * ease).toFixed(3) + ')');
+  cg.addColorStop(0.32,'rgba(255,250,235,' + (0.75 * ease).toFixed(3) + ')');
   cg.addColorStop(1,   'rgba(255,235,180,0)');
   c.fillStyle = cg;
   c.beginPath();
-  c.arc(cx, cy, R * 0.62, 0, TAU);
+  c.arc(cx, cy, R * 0.58, 0, TAU);
   c.fill();
 
   if (starT > 0.55){
-    for (var j = 0; j < 6; j++){
-      var ang2 = time * 0.0012 + j * (TAU / 6);
-      var rad = R * 1.55;
+    for (var j = 0; j < 8; j++){
+      var ang2 = time * 0.0012 + j * (TAU / 8);
+      var rad = R * 1.60;
       var x2 = cx + Math.cos(ang2) * rad;
-      var y2 = cy + Math.sin(ang2) * rad * 0.75;
-      var a3 = 0.35 + 0.55 * (0.5 + 0.5 * Math.sin(time * 0.004 + j * 1.7));
+      var y2 = cy + Math.sin(ang2) * rad * 0.78;
+      var a3 = 0.32 + 0.50 * (0.5 + 0.5 * Math.sin(time * 0.004 + j * 1.7));
       a3 *= Math.min(1, (starT - 0.55) / 0.45);
-      var rr = 5.0 + 2.2 * Math.sin(time * 0.005 + j);
+      var rr = 4.6 + 2.0 * Math.sin(time * 0.005 + j);
       c.globalAlpha = a3;
-      var spj = (j % 2 === 0) ? glowSprite('#ffe082') : glowSprite('#ffffff');
+      var spj = (j % 2 === 0) ? glowSprite('#ffe082') : glowSprite('#f0f4ff');
       c.drawImage(spj, x2 - rr, y2 - rr, rr * 2, rr * 2);
     }
   }
@@ -777,11 +791,11 @@ function explode(x, y, color){
   var style = Math.random();
   var n, speed, grav, drag, decay;
 
-  if (style < 0.24){        n = 100; speed = 4.0; grav = 0.028; drag = 0.985; decay = 0.0080; }
-  else if (style < 0.48){   n = 130; speed = 4.4; grav = 0.034; drag = 0.982; decay = 0.0100; }
-  else if (style < 0.70){   n = 90;  speed = 3.1; grav = 0.055; drag = 0.992; decay = 0.0060; }
-  else if (style < 0.88){   n = 120; speed = 4.7; grav = 0.032; drag = 0.983; decay = 0.0090; }
-  else {                    n = 105; speed = 4.2; grav = 0.030; drag = 0.984; decay = 0.0090; }
+  if (style < 0.24){        n = 105; speed = 4.0; grav = 0.028; drag = 0.985; decay = 0.0080; }
+  else if (style < 0.48){   n = 135; speed = 4.4; grav = 0.034; drag = 0.982; decay = 0.0100; }
+  else if (style < 0.70){   n = 95;  speed = 3.1; grav = 0.055; drag = 0.992; decay = 0.0060; }
+  else if (style < 0.88){   n = 125; speed = 4.7; grav = 0.032; drag = 0.983; decay = 0.0090; }
+  else {                    n = 110; speed = 4.2; grav = 0.030; drag = 0.984; decay = 0.0090; }
 
   var isRing   = style < 0.24;
   var isWillow = style >= 0.48 && style < 0.70;
@@ -814,12 +828,12 @@ function explode(x, y, color){
       drag: drag,
       color: col,
       sprite: glowSprite(col),
-      size: 1.1 + Math.random() * 1.5,
+      size: 1.1 + Math.random() * 1.6,
       willow: isWillow
     });
   }
 
-  var flick = 14 + Math.floor(Math.random() * 20);
+  var flick = 16 + Math.floor(Math.random() * 22);
   for (var f = 0; f < flick; f++){
     var fa = Math.random() * TAU;
     var fs = 0.5 + Math.random() * 1.8;
@@ -831,13 +845,13 @@ function explode(x, y, color){
       gravity: 0.020, drag: 0.980,
       color: '#ffffff',
       sprite: glowSprite('#ffffff'),
-      size: 0.7 + Math.random() * 1.1,
+      size: 0.7 + Math.random() * 1.2,
       willow: false
     });
   }
 
-  flashes.push({ x: x, y: y, maxR: 82 + Math.random() * 100, life: 1, color: color });
-  if (sparks.length > 2600) sparks.splice(0, sparks.length - 2600);
+  flashes.push({ x: x, y: y, maxR: 85 + Math.random() * 105, life: 1, color: color });
+  if (sparks.length > 2800) sparks.splice(0, sparks.length - 2800);
 }
 
 function updateFireworks(dt){
@@ -862,7 +876,7 @@ function updateFireworks(dt){
     r.x += r.vx * dt;
     r.y += r.vy * dt;
 
-    if (sparks.length < 2500 && Math.random() < 0.85){
+    if (sparks.length < 2700 && Math.random() < 0.85){
       sparks.push({
         x: r.x + (Math.random() - 0.5) * 2,
         y: r.y + Math.random() * 5,
@@ -907,7 +921,7 @@ function drawFireworks(c){
   for (var i = 0; i < flashes.length; i++){
     var f = flashes[i];
     var rr = f.maxR * (1 - f.life * 0.88);
-    var a = f.life * f.life * 0.90;
+    var a = f.life * f.life * 0.80;
     if (a <= 0.01) continue;
     c.globalAlpha = a;
     c.drawImage(glowSprite(f.color), f.x - rr, f.y - rr, rr * 2, rr * 2);
@@ -923,7 +937,7 @@ function drawFireworks(c){
     c.lineTo(rk.x, rk.y);
     c.stroke();
     var s = 10;
-    c.globalAlpha = 0.95;
+    c.globalAlpha = 0.92;
     c.drawImage(glowSprite(rk.color), rk.x - s, rk.y - s, s * 2, s * 2);
   }
 
@@ -940,7 +954,7 @@ function drawFireworks(c){
     c.lineTo(sp.x, sp.y);
     c.stroke();
 
-    c.globalAlpha = al * 0.58;
+    c.globalAlpha = al * 0.50;
     var rr2 = sp.size * (sp.willow ? 3.4 : 3.0);
     c.drawImage(sp.sprite, sp.x - rr2, sp.y - rr2, rr2 * 2, rr2 * 2);
   }
@@ -964,7 +978,7 @@ function drawSnow(){
   for (var i = 0; i < snow.length; i++){
     var s = snow[i];
     var tw = 0.62 + 0.38 * Math.sin(time * s.tw + s.phase);
-    ctx.globalAlpha = s.alpha * tw;
+    ctx.globalAlpha = s.alpha * tw * 0.85;
     var r = s.r * 2.2;
     ctx.drawImage(snowSprite, s.x - r, s.y - r, r * 2, r * 2);
   }
@@ -984,8 +998,8 @@ function drawText(alpha){
 
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.shadowColor = 'rgba(255,232,160,0.95)';
-  ctx.shadowBlur = 22;
+  ctx.shadowColor = 'rgba(255,232,160,0.85)';
+  ctx.shadowBlur = 18;
   ctx.fillStyle = '#fffaf0';
   ctx.font = '600 ' + fs1 + 'px Georgia, "Times New Roman", "Songti SC", serif';
   ctx.fillText('Merry Christmas', cx, H * 0.905);
@@ -993,8 +1007,8 @@ function drawText(alpha){
 
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.shadowColor = 'rgba(255,220,150,0.85)';
-  ctx.shadowBlur = 12;
+  ctx.shadowColor = 'rgba(255,220,150,0.75)';
+  ctx.shadowBlur = 10;
   ctx.fillStyle = '#fff2d8';
   ctx.font = '400 ' + fs2 + 'px "PingFang SC","Microsoft YaHei",sans-serif';
   ctx.fillText('给最可爱的你 ❤', cx, H * 0.905 + fs1 * 1.0);
@@ -1034,6 +1048,7 @@ function loop(ts){
     }
   }
 
+  /* ---- 背景 ---- */
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
   ctx.fillStyle = bgGrad || '#010108';
@@ -1045,6 +1060,7 @@ function loop(ts){
   updateFireworks(dt);
   updateEmbers(dt);
 
+  /* ---- Bloom 层（大幅降低强度） ---- */
   glowCtx.setTransform(1, 0, 0, 1, 0, 0);
   glowCtx.clearRect(0, 0, glowCv.width, glowCv.height);
   glowCtx.setTransform(GS, 0, 0, GS, 0, 0);
@@ -1058,12 +1074,13 @@ function loop(ts){
   drawStar(glowCtx, starT);
 
   ctx.globalCompositeOperation = 'lighter';
-  ctx.globalAlpha = 0.72;
+  ctx.globalAlpha = 0.42;
   ctx.drawImage(glowCv, 0, 0, W, H);
-  ctx.globalAlpha = 0.38;
+  ctx.globalAlpha = 0.16;
   ctx.drawImage(glowCv, -W * 0.016, -H * 0.016, W * 1.032, H * 1.032);
   ctx.globalAlpha = 1;
 
+  /* ---- 主画布锐利细节 ---- */
   drawTree(ctx, false);
   drawBeads(ctx, false);
   drawColorLights(ctx);
