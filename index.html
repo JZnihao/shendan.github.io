@@ -1,0 +1,1131 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#10251f">
+  <meta name="description" content="一棵会闪烁的圣诞树和一只会送祝福的小猪猪">
+  <title>圣诞树与小猪猪</title>
+  <style>
+    :root {
+      --ink: #fff8e8;
+      --muted: #afbdc9;
+      --pine: #050812;
+      --pine-2: #0b1224;
+      --pine-3: #111b33;
+      --berry: #e6645e;
+      --berry-dark: #b63e47;
+      --cream: #fff3d8;
+      --gold: #ffd86f;
+      --sky: #8eddf0;
+      --pink: #ff9fa9;
+      --ice: #d9f2ee;
+      --shadow: rgba(0, 0, 0, .72);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--pine);
+    }
+
+    body {
+      color: var(--ink);
+      font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button { font: inherit; }
+
+    .scene {
+      position: relative;
+      isolation: isolate;
+      min-height: 100svh;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 73% 23%, rgba(64, 110, 176, .18), transparent 28%),
+        radial-gradient(circle at 68% 42%, rgba(255, 216, 111, .10), transparent 21%),
+        radial-gradient(circle at 14% 77%, rgba(174, 47, 98, .12), transparent 25%),
+        linear-gradient(142deg, #03050d 0%, #0a1125 50%, #02040a 100%),
+        var(--pine);
+    }
+
+    .scene::before,
+    .scene::after {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      pointer-events: none;
+      border-radius: 50%;
+      filter: blur(1px);
+    }
+
+    .scene::before {
+      width: 520px;
+      height: 520px;
+      left: -280px;
+      bottom: -360px;
+      background: rgba(24, 42, 88, .18);
+    }
+
+    .scene::after {
+      width: 310px;
+      height: 310px;
+      right: -150px;
+      top: -135px;
+      background: rgba(153, 48, 89, .10);
+    }
+
+    .moon {
+      position: absolute;
+      z-index: -1;
+      top: 8%;
+      right: 17%;
+      width: clamp(78px, 12vw, 142px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 34%, #fffdf0 0 7%, #f8e2a5 36%, #c9834e 100%);
+      box-shadow: 0 0 0 14px rgba(255, 216, 111, .05), 0 0 80px rgba(255, 216, 111, .3);
+      opacity: .82;
+    }
+
+    .moon::before,
+    .moon::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(155, 94, 68, .18);
+    }
+
+    .moon::before { width: 17%; height: 17%; top: 24%; left: 22%; }
+    .moon::after { width: 25%; height: 25%; right: 19%; bottom: 22%; }
+
+    .snowfield,
+    .starfield {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .snowflake,
+    .star {
+      position: absolute;
+      display: block;
+      border-radius: 50%;
+      opacity: .72;
+      animation: drift linear infinite;
+    }
+
+    .snowflake {
+      width: 5px;
+      height: 5px;
+      background: rgba(235, 247, 255, .78);
+      box-shadow: 0 0 10px rgba(177, 223, 255, .55);
+    }
+
+    .star {
+      width: 3px;
+      height: 3px;
+      background: #fff9e6;
+      box-shadow: 0 0 13px rgba(255, 238, 168, .95);
+      animation: twinkle 2.8s ease-in-out infinite;
+    }
+
+    .sparkle {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      color: var(--gold);
+      opacity: .68;
+      animation: twinkle 3.6s ease-in-out infinite;
+    }
+
+    .sparkle::before,
+    .sparkle::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 0;
+      width: 2px;
+      height: 100%;
+      border-radius: 50%;
+      background: currentColor;
+      transform: translateX(-50%);
+      box-shadow: 0 0 9px currentColor;
+    }
+
+    .sparkle::after { transform: translateX(-50%) rotate(90deg); }
+
+    .page {
+      position: relative;
+      z-index: 2;
+      width: min(1100px, 100%);
+      min-height: 100svh;
+      margin: 0 auto;
+      padding: clamp(22px, 4vw, 56px) clamp(18px, 5vw, 68px) 22px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 18px;
+    }
+
+    .page::after {
+      content: "✦  ✧  ✦";
+      position: absolute;
+      top: 19px;
+      left: 50%;
+      color: rgba(245, 200, 107, .38);
+      font-size: 13px;
+      letter-spacing: .55em;
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    .topline,
+    .footerline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .topline { color: var(--muted); }
+
+    .brand-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--cream);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .brand-dot {
+      width: 9px;
+      height: 9px;
+      border: 2px solid var(--berry);
+      border-radius: 50%;
+      box-shadow: 0 0 0 4px rgba(230, 100, 94, .12);
+    }
+
+    .date-note {
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      opacity: .7;
+    }
+
+    .content {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(280px, .86fr) minmax(360px, 1.14fr);
+      align-items: center;
+      gap: clamp(28px, 6vw, 78px);
+    }
+
+    .copy { max-width: 420px; }
+
+    .eyebrow {
+      margin: 0 0 17px;
+      color: var(--gold);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 470px;
+      margin: 0;
+      color: var(--cream);
+      font-size: clamp(38px, 5vw, 72px);
+      font-weight: 800;
+      letter-spacing: -.055em;
+      line-height: 1.05;
+      text-wrap: pretty;
+    }
+
+    .lead {
+      max-width: 350px;
+      margin: 24px 0 0;
+      color: var(--muted);
+      font-size: clamp(15px, 1.7vw, 18px);
+      line-height: 1.8;
+    }
+
+    .wish-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 29px;
+    }
+
+    .wish-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 41px;
+      padding: 0 15px;
+      color: var(--pine);
+      background: var(--cream);
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 8px 25px rgba(5, 17, 13, .18);
+    }
+
+    .icon-button {
+      width: 42px;
+      height: 42px;
+      display: inline-grid;
+      place-items: center;
+      padding: 0;
+      border: 1px solid rgba(255, 243, 216, .22);
+      border-radius: 50%;
+      color: var(--cream);
+      background: rgba(255, 243, 216, .06);
+      cursor: pointer;
+      transition: transform .22s ease, background .22s ease, border-color .22s ease;
+    }
+
+    .icon-button svg { width: 18px; height: 18px; }
+
+    .icon-button:active { transform: scale(.9); }
+    .icon-button:hover,
+    .icon-button.is-active {
+      border-color: var(--gold);
+      background: rgba(245, 200, 107, .16);
+    }
+
+    .icon-button:focus-visible,
+    .tree-hit:focus-visible,
+    .pig-hit:focus-visible {
+      outline: 3px solid rgba(143, 199, 211, .75);
+      outline-offset: 5px;
+    }
+
+    .wish-bubble {
+      min-height: 32px;
+      margin-top: 22px;
+      color: var(--cream);
+      font-size: 14px;
+      opacity: .86;
+      transition: opacity .25s ease, transform .25s ease;
+    }
+
+    .wish-bubble.is-changing {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+
+    .visual {
+      position: relative;
+      min-height: min(630px, 67svh);
+      display: grid;
+      place-items: center;
+      perspective: 1200px;
+      transform-style: preserve-3d;
+    }
+
+    #fireworksCanvas {
+      position: absolute;
+      inset: 2% 0 0;
+      z-index: 1;
+      width: 100%;
+      height: 96%;
+      pointer-events: none;
+      mix-blend-mode: screen;
+      filter: brightness(1.18) saturate(1.18);
+      transform: translateZ(0);
+      transform-style: preserve-3d;
+    }
+
+    .visual::before {
+      content: "";
+      position: absolute;
+      width: min(460px, 78vw);
+      height: min(520px, 78vw);
+      border: 1px solid rgba(255, 243, 216, .10);
+      border-radius: 48% 52% 45% 55% / 44% 48% 52% 56%;
+      transform: rotate(8deg);
+      box-shadow: inset 0 0 35px rgba(255, 243, 216, .04);
+      pointer-events: none;
+    }
+
+    .visual::after {
+      content: "";
+      position: absolute;
+      left: 12%;
+      bottom: 8%;
+      width: 76%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(245, 200, 107, .5), transparent);
+      box-shadow: 0 8px 0 rgba(255, 243, 216, .06), 0 -8px 0 rgba(255, 243, 216, .04);
+      pointer-events: none;
+    }
+
+    .halo {
+      position: absolute;
+      width: min(530px, 82vw);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 243, 216, .1);
+      box-shadow: inset 0 0 70px rgba(245, 200, 107, .05), 0 0 60px rgba(88, 138, 103, .12);
+    }
+
+    .halo::before,
+    .halo::after {
+      content: "";
+      position: absolute;
+      inset: 11%;
+      border: 1px dashed rgba(255, 243, 216, .13);
+      border-radius: 50%;
+      animation: orbit 18s linear infinite;
+    }
+
+    .halo::after {
+      inset: 20%;
+      animation-direction: reverse;
+      animation-duration: 24s;
+    }
+
+    .tree-hit,
+    .pig-hit {
+      position: absolute;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .tree-hit {
+      width: min(330px, 61vw);
+      height: min(470px, 61vw * 1.42);
+      top: 5%;
+      left: 47%;
+      transform: translateX(-50%);
+      z-index: 2;
+    }
+
+    .tree-art {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      filter: drop-shadow(0 24px 22px var(--shadow));
+      animation: tree-breathe 4.4s ease-in-out infinite;
+    }
+
+    .tree-art { display: none; }
+
+    .tree-art .ribbon {
+      fill: none;
+      stroke: #f7d77b;
+      stroke-width: 4;
+      stroke-linecap: round;
+      opacity: .9;
+      filter: url(#softGlow);
+    }
+
+    .tree-art .ribbon-shadow {
+      fill: none;
+      stroke: #b57c43;
+      stroke-width: 1.2;
+      stroke-linecap: round;
+      opacity: .55;
+    }
+
+    .tree-art .ornament {
+      stroke: rgba(255, 243, 216, .65);
+      stroke-width: 1;
+    }
+
+    .tree-layer { transform-origin: 120px 200px; }
+    .tree-hit:hover .tree-art { animation-duration: 2.5s; }
+
+    .tree-shadow {
+      position: absolute;
+      z-index: 1;
+      left: 50%;
+      bottom: 3%;
+      width: 250px;
+      height: 35px;
+      border-radius: 50%;
+      background: rgba(3, 12, 9, .52);
+      filter: blur(10px);
+      transform: translateX(-50%);
+    }
+
+    .pig-hit {
+      z-index: 4;
+      right: 3%;
+      bottom: 10%;
+      width: min(180px, 33vw);
+      transform: rotate(3deg);
+      animation: pig-float 3.8s ease-in-out infinite;
+    }
+
+    .pig-hit.is-happy { animation: pig-pop .65s ease both; }
+
+    .pig-art {
+      width: 100%;
+      height: auto;
+      overflow: visible;
+      filter: drop-shadow(0 17px 14px rgba(5, 17, 13, .34));
+    }
+
+    .pig-art .cheek { fill: #ffaaa5; opacity: .75; }
+    .pig-art .hat { fill: #e6645e; stroke: #b63e47; stroke-width: 2; }
+    .pig-art .hat-trim { fill: #fff3d8; }
+    .pig-art .hat-pom { fill: #fff3d8; stroke: #e3be7b; stroke-width: 1.5; }
+
+    .pig-hit:hover .pig-art { transform: rotate(-2deg) scale(1.04); }
+    .pig-art, .pig-art * { transition: transform .28s ease; }
+
+    .speech {
+      position: absolute;
+      right: 3%;
+      bottom: calc(10% + min(180px, 33vw) * .76);
+      z-index: 5;
+      max-width: 155px;
+      padding: 10px 13px;
+      color: var(--pine);
+      background: var(--cream);
+      border-radius: 13px 13px 3px 13px;
+      box-shadow: 0 10px 24px rgba(5, 17, 13, .18);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.45;
+      opacity: .96;
+      transform: rotate(-3deg);
+    }
+
+    .firework-caption {
+      position: absolute;
+      z-index: 4;
+      left: 50%;
+      top: 4%;
+      color: rgba(255, 243, 216, .7);
+      font-size: 10px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .speech::after {
+      content: "";
+      position: absolute;
+      right: 15px;
+      bottom: -9px;
+      width: 15px;
+      height: 15px;
+      background: var(--cream);
+      clip-path: polygon(0 0, 100% 0, 100% 100%);
+    }
+
+    .footerline {
+      color: rgba(185, 201, 188, .64);
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .footer-note { display: inline-flex; align-items: center; gap: 8px; }
+    .footer-note::before { content: ""; width: 28px; height: 1px; background: rgba(245, 200, 107, .55); }
+
+    .confetti {
+      position: absolute;
+      z-index: 8;
+      width: 9px;
+      height: 14px;
+      border-radius: 2px;
+      pointer-events: none;
+      animation: confetti-fly 900ms cubic-bezier(.18, .7, .3, 1) forwards;
+    }
+
+    .heart-pop {
+      position: absolute;
+      z-index: 9;
+      color: var(--pink);
+      font-size: 17px;
+      line-height: 1;
+      text-shadow: 0 0 9px rgba(255, 185, 176, .7);
+      pointer-events: none;
+      animation: heart-fly 1050ms cubic-bezier(.15, .72, .28, 1) forwards;
+    }
+
+    .tree-hit.party .bulb { animation: bulb-party .7s ease-in-out infinite alternate; }
+    .tree-hit.party .bulb:nth-child(3n) { animation-delay: -.2s; }
+    .tree-hit.party .bulb:nth-child(4n) { animation-delay: -.45s; }
+    .tree-hit.party .star-top { animation: star-pulse .9s ease-in-out infinite alternate; }
+    .tree-hit:not(.party) .ornament { animation: ornament-glow 3.2s ease-in-out infinite; transform-origin: center; }
+    .tree-hit:not(.party) .ornament:nth-child(2n) { animation-delay: -1.1s; }
+
+    @keyframes drift {
+      0% { transform: translate3d(0, -12vh, 0) rotate(0); }
+      100% { transform: translate3d(30px, 112vh, 0) rotate(180deg); }
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: .18; transform: scale(.7); }
+      50% { opacity: .95; transform: scale(1.5); }
+    }
+
+    @keyframes orbit { to { transform: rotate(360deg); } }
+    @keyframes tree-breathe { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-5px) rotate(-.6deg); } }
+    @keyframes pig-float { 0%, 100% { transform: translateY(0) rotate(3deg); } 50% { transform: translateY(-9px) rotate(-2deg); } }
+    @keyframes pig-pop { 0% { transform: scale(1) rotate(3deg); } 42% { transform: scale(1.12) rotate(-5deg); } 100% { transform: scale(1) rotate(3deg); } }
+    @keyframes bulb-party { from { opacity: .55; transform: scale(.85); } to { opacity: 1; transform: scale(1.22); } }
+    @keyframes star-pulse { from { filter: drop-shadow(0 0 2px var(--gold)); transform: scale(.92); } to { filter: drop-shadow(0 0 13px var(--gold)); transform: scale(1.08); } }
+    @keyframes ornament-glow { 0%, 100% { opacity: .78; filter: brightness(.9); } 50% { opacity: 1; filter: brightness(1.35) drop-shadow(0 0 4px rgba(255, 243, 216, .5)); } }
+    @keyframes confetti-fly { from { opacity: 1; transform: translate3d(0, 0, 0) rotate(0); } to { opacity: 0; transform: translate3d(var(--dx), var(--dy), 0) rotate(520deg); } }
+    @keyframes heart-fly { from { opacity: 0; transform: translate3d(0, 0, 0) scale(.7); } 18% { opacity: 1; } to { opacity: 0; transform: translate3d(var(--dx), var(--dy), 0) scale(1.25) rotate(18deg); } }
+
+    @media (max-width: 760px) {
+      .page { gap: 10px; padding-top: max(18px, env(safe-area-inset-top)); padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+      .content { grid-template-columns: 1fr; gap: 0; align-content: center; }
+      .copy { max-width: 530px; margin: 0 auto; text-align: center; }
+      .eyebrow { margin-bottom: 13px; }
+      h1 { margin-inline: auto; font-size: clamp(38px, 11vw, 58px); }
+      .lead { margin-inline: auto; font-size: 14px; line-height: 1.65; }
+      .wish-row { justify-content: center; margin-top: 19px; }
+      .wish-bubble { margin-top: 10px; }
+      .visual { min-height: min(410px, 52svh); margin-top: -10px; }
+      #fireworksCanvas { inset: 0; height: 100%; }
+      .tree-hit { top: 4%; width: min(300px, 70vw); height: min(425px, 70vw * 1.42); left: 46%; }
+      .pig-hit { right: 0; bottom: 7%; width: min(145px, 34vw); }
+      .speech { right: 0; bottom: calc(7% + min(145px, 34vw) * .8); }
+      .footerline { font-size: 9px; }
+    }
+
+    @media (max-width: 390px) {
+      .date-note { display: none; }
+      .visual { min-height: min(400px, 50svh); }
+      .tree-hit { width: min(270px, 68vw); height: min(390px, 68vw * 1.42); }
+      .pig-hit { width: min(128px, 32vw); }
+      .speech { bottom: calc(7% + min(128px, 32vw) * .82); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Assumption: a single-file, offline-friendly mobile greeting page for opening inside WeChat. -->
+  <main class="scene" id="scene">
+    <div class="moon" aria-hidden="true"></div>
+    <span class="sparkle" style="left: 10%; top: 19%; transform: scale(.7);" aria-hidden="true"></span>
+    <span class="sparkle" style="left: 43%; top: 10%; transform: scale(.55); animation-delay: -1.2s;" aria-hidden="true"></span>
+    <span class="sparkle" style="right: 7%; top: 47%; transform: scale(.8); animation-delay: -.7s;" aria-hidden="true"></span>
+    <span class="sparkle" style="left: 9%; bottom: 23%; transform: scale(.55); animation-delay: -2.2s;" aria-hidden="true"></span>
+    <div class="starfield" aria-hidden="true" id="starfield"></div>
+    <div class="snowfield" aria-hidden="true" id="snowfield"></div>
+
+    <div class="page">
+      <header class="topline">
+        <div class="brand-mark"><span class="brand-dot"></span><span>Christmas night</span></div>
+        <div class="date-note">Tonight · 25 Dec</div>
+      </header>
+
+      <section class="content" aria-label="圣诞祝福场景">
+        <div class="copy">
+          <p class="eyebrow">A little magic</p>
+          <h1>圣诞快乐</h1>
+          <p class="lead">愿你心里有光，眼里有星。</p>
+          <div class="wish-row">
+            <span class="wish-chip" id="wishChip">愿你被温柔照亮</span>
+            <button class="icon-button" id="partyButton" type="button" aria-label="点亮圣诞树" title="点亮圣诞树">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4M5.64 5.64l2.83 2.83M3 12h4M5.64 18.36l2.83-2.83M18.36 18.36l-2.83-2.83M17 12h4M18.36 5.64l-2.83 2.83M12 17v4"/><circle cx="12" cy="12" r="3.5"/></svg>
+            </button>
+            <button class="icon-button" id="soundButton" type="button" aria-label="打开祝福音效" title="打开祝福音效">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10v4h3l4 3V7l-4 3H4Z"/><path d="M16 9.5a4 4 0 0 1 0 5M18.5 7a7.5 7.5 0 0 1 0 10"/></svg>
+            </button>
+          </div>
+          <div class="wish-bubble" id="wishBubble" aria-live="polite">点一下烟花，听一声叮当。</div>
+        </div>
+
+        <div class="visual" id="visual">
+          <div class="halo" aria-hidden="true"></div>
+          <div class="tree-shadow" aria-hidden="true"></div>
+          <canvas id="fireworksCanvas" aria-hidden="true"></canvas>
+          <div class="firework-caption">fireworks tree</div>
+
+          <button class="tree-hit" id="treeButton" type="button" aria-label="圣诞树">
+            <svg class="tree-art" viewBox="0 0 240 360" role="img" aria-label="一棵挂满彩灯的圣诞树">
+              <defs>
+                <linearGradient id="pineOne" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3e7855"/><stop offset="1" stop-color="#173728"/></linearGradient>
+                <linearGradient id="pineTwo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#356c4d"/><stop offset="1" stop-color="#10281e"/></linearGradient>
+                <linearGradient id="trunk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9d5c3b"/><stop offset="1" stop-color="#5c3027"/></linearGradient>
+                <filter id="softGlow"><feGaussianBlur stdDeviation="2.7" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+              </defs>
+              <g class="tree-layer">
+                <path d="M120 20 108 47 92 48 103 61 97 77 120 68 143 77 137 61 148 48 132 47Z" fill="#f5c86b" class="star-top" filter="url(#softGlow)"/>
+                <path d="M120 48 55 152h38L42 226h48l-31 75h122l-31-75h48l-51-74h38Z" fill="url(#pineOne)" stroke="#5b9b70" stroke-opacity=".38" stroke-width="2"/>
+                <path d="M120 92 78 162h28l-48 78h45l-28 58h90l-28-58h45l-48-78h28Z" fill="url(#pineTwo)" opacity=".94"/>
+                <path d="M110 294h20v42h-20z" fill="url(#trunk)"/>
+                <path d="M94 335h52l-9 8H103Z" fill="#63362c" opacity=".9"/>
+                <path class="ribbon-shadow" d="M66 164c30 14 77 16 108 0M51 235c37 16 102 18 138 0"/>
+                <path class="ribbon" d="M66 162c30 14 77 16 108 0M51 233c37 16 102 18 138 0"/>
+                <path class="ribbon" d="M76 278c27 11 62 12 90 0" opacity=".74"/>
+                <g class="bulbs" filter="url(#softGlow)">
+                  <circle class="bulb" cx="94" cy="116" r="4" fill="#e6645e"/>
+                  <circle class="bulb" cx="135" cy="131" r="4" fill="#8fc7d3"/>
+                  <circle class="bulb" cx="78" cy="175" r="4" fill="#f5c86b"/>
+                  <circle class="bulb" cx="119" cy="177" r="4" fill="#e6645e"/>
+                  <circle class="bulb" cx="158" cy="185" r="4" fill="#8fc7d3"/>
+                  <circle class="bulb" cx="64" cy="239" r="4" fill="#8fc7d3"/>
+                  <circle class="bulb" cx="102" cy="232" r="4" fill="#f5c86b"/>
+                  <circle class="bulb" cx="143" cy="250" r="4" fill="#e6645e"/>
+                  <circle class="bulb" cx="177" cy="243" r="4" fill="#f5c86b"/>
+                  <circle class="bulb" cx="112" cy="282" r="4" fill="#e6645e"/>
+                  <circle class="bulb" cx="157" cy="291" r="4" fill="#8fc7d3"/>
+                </g>
+                <g class="ornaments">
+                  <path d="M109 102v-10" stroke="#fff3d8" stroke-width="1.3"/><circle class="ornament" cx="109" cy="108" r="8" fill="#e6645e"/>
+                  <path d="M145 151v-10" stroke="#fff3d8" stroke-width="1.3"/><circle class="ornament" cx="145" cy="158" r="8" fill="#f5c86b"/>
+                  <path d="M89 207v-10" stroke="#fff3d8" stroke-width="1.3"/><circle class="ornament" cx="89" cy="214" r="8" fill="#8fc7d3"/>
+                  <path d="M155 219v-10" stroke="#fff3d8" stroke-width="1.3"/><circle class="ornament" cx="155" cy="226" r="8" fill="#e6645e"/>
+                  <path d="M121 264v-10" stroke="#fff3d8" stroke-width="1.3"/><circle class="ornament" cx="121" cy="271" r="8" fill="#f5c86b"/>
+                </g>
+                <g fill="#fff3d8" opacity=".9">
+                  <circle cx="111" cy="86" r="1.6"/><circle cx="88" cy="147" r="1.4"/><circle cx="151" cy="158" r="1.6"/><circle cx="98" cy="208" r="1.4"/><circle cx="167" cy="221" r="1.6"/><circle cx="88" cy="265" r="1.4"/>
+                </g>
+                <g transform="translate(73 307)">
+                  <path d="M0 16h30v22H0z" fill="#e6645e"/><path d="M9 16h5v22H9zM0 23h30v4H0z" fill="#fff3d8"/><path d="M8 16c4-8 10-8 14 0" fill="none" stroke="#f5c86b" stroke-width="3"/>
+                </g>
+                <g transform="translate(138 305)">
+                  <path d="M0 18h30v20H0z" fill="#8fc7d3"/><path d="M12 18h5v20h-5zM0 25h30v4H0z" fill="#fff3d8"/><path d="M9 18c4-7 10-7 14 0" fill="none" stroke="#e6645e" stroke-width="3"/>
+                </g>
+              </g>
+            </svg>
+          </button>
+
+          <div class="speech" id="speech">呼噜呼噜，圣诞快乐！</div>
+          <button class="pig-hit" id="pigButton" type="button" aria-label="小猪猪">
+            <svg class="pig-art" viewBox="0 0 220 200" role="img" aria-label="戴着圣诞帽和围巾的可爱小猪猪">
+              <defs>
+                <linearGradient id="pigBody" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd7c8"/><stop offset=".55" stop-color="#ffb2a8"/><stop offset="1" stop-color="#e97d86"/></linearGradient>
+                <linearGradient id="pigBelly" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff1e4"/><stop offset="1" stop-color="#ffc5b4"/></linearGradient>
+                <filter id="pigGlow"><feGaussianBlur stdDeviation="2.4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+              </defs>
+              <ellipse cx="110" cy="174" rx="71" ry="13" fill="rgba(0,0,0,.28)"/>
+              <path d="M53 130c-23-8-31-27-18-38 9-8 23-5 32 7" fill="none" stroke="#f59a9a" stroke-width="11" stroke-linecap="round"/>
+              <path d="M67 139c-5 22 3 32 16 33M151 139c5 22-3 32-16 33" fill="none" stroke="#dd7880" stroke-width="12" stroke-linecap="round"/>
+              <ellipse cx="110" cy="124" rx="64" ry="55" fill="url(#pigBody)" stroke="#b75d6b" stroke-width="2.5"/>
+              <ellipse cx="110" cy="145" rx="34" ry="25" fill="url(#pigBelly)" opacity=".74"/>
+              <path d="M58 73c-16-35 16-43 37-17M162 73c16-35-16-43-37-17" fill="#f3a0a0" stroke="#b75d6b" stroke-width="2.5"/>
+              <path d="M72 59c14-36 46-49 76-31l26 33-35-7-38 22Z" class="hat" filter="url(#pigGlow)"/>
+              <path d="M78 59c19-11 39-13 61-7l20 5-4 12c-25-7-48-5-70 7Z" class="hat-trim"/>
+              <circle cx="174" cy="57" r="11" class="hat-pom"/>
+              <ellipse cx="83" cy="107" rx="15" ry="21" fill="#402d40"/>
+              <ellipse cx="137" cy="107" rx="15" ry="21" fill="#402d40"/>
+              <ellipse cx="78" cy="98" rx="5" ry="8" fill="#fff"/><ellipse cx="132" cy="98" rx="5" ry="8" fill="#fff"/>
+              <circle cx="86" cy="112" r="4.5" fill="#171629"/><circle cx="140" cy="112" r="4.5" fill="#171629"/>
+              <ellipse class="cheek" cx="62" cy="133" rx="16" ry="9"/><ellipse class="cheek" cx="158" cy="133" rx="16" ry="9"/>
+              <ellipse cx="110" cy="132" rx="32" ry="24" fill="#f69a9b" stroke="#b75d6b" stroke-width="2.5"/>
+              <ellipse cx="98" cy="130" rx="5" ry="6.5" fill="#784758"/><ellipse cx="122" cy="130" rx="5" ry="6.5" fill="#784758"/>
+              <path d="M102 146c5 6 11 6 16 0" fill="none" stroke="#a85565" stroke-width="3" stroke-linecap="round"/>
+              <path d="M57 143c22 13 58 16 89 5l-5 27c-29 10-58 6-85-7Z" fill="#e85862" stroke="#a94255" stroke-width="2.5"/>
+              <path d="M114 151l15-12 16 12-12 18Z" fill="#fff5d9" opacity=".92"/>
+              <circle cx="157" cy="89" r="3" fill="#fff7ed" opacity=".8"/>
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      <footer class="footerline">
+        <span class="footer-note">Merry Christmas</span>
+        <span>with love</span>
+      </footer>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      const scene = document.getElementById('scene');
+      const starfield = document.getElementById('starfield');
+      const snowfield = document.getElementById('snowfield');
+      const visual = document.getElementById('visual');
+      const treeButton = document.getElementById('treeButton');
+      const pigButton = document.getElementById('pigButton');
+      const partyButton = document.getElementById('partyButton');
+      const soundButton = document.getElementById('soundButton');
+      const wishBubble = document.getElementById('wishBubble');
+      const speech = document.getElementById('speech');
+      const wishChip = document.getElementById('wishChip');
+      const fireworksCanvas = document.getElementById('fireworksCanvas');
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const wishes = ['愿你发光', '愿你有星星', '愿你常欢喜', '愿你被爱包围'];
+      const pigLines = ['圣诞快乐！', '甜甜的！', '抱抱你！', '好运来啦！'];
+      let soundOn = false;
+      let audioContext;
+      let lastWish = 0;
+
+      const ctx = fireworksCanvas.getContext('2d');
+      const rockets = [];
+      const particles = [];
+      const treeDust = [];
+      const palette = ['#fff2a8', '#ff7f9c', '#65e4ff', '#ffffff', '#dba0ff', '#ffbf65'];
+      let canvasWidth = 0;
+      let canvasHeight = 0;
+      let fireworkClock = 0;
+      let fireworkFrame = 0;
+      let viewAngle = 0;
+
+      const project3D = (point) => {
+        const centerX = canvasWidth * .53;
+        const centerY = canvasHeight * .47;
+        const focalLength = Math.max(360, Math.min(720, canvasWidth * 1.15));
+        const cos = Math.cos(viewAngle);
+        const sin = Math.sin(viewAngle);
+        const offsetX = point.x - centerX;
+        const rotatedX = offsetX * cos - point.z * sin;
+        const rotatedZ = offsetX * sin + point.z * cos;
+        const scale = focalLength / (focalLength - rotatedZ);
+        return {
+          x: centerX + rotatedX * scale,
+          y: centerY + (point.y - centerY) * scale,
+          scale,
+          depth: rotatedZ,
+        };
+      };
+
+      const resizeFireworks = () => {
+        const box = visual.getBoundingClientRect();
+        const ratio = Math.min(window.devicePixelRatio || 1, 2);
+        canvasWidth = Math.max(1, box.width);
+        canvasHeight = Math.max(1, box.height);
+        fireworksCanvas.width = Math.floor(canvasWidth * ratio);
+        fireworksCanvas.height = Math.floor(canvasHeight * ratio);
+        fireworksCanvas.style.width = `${canvasWidth}px`;
+        fireworksCanvas.style.height = `${canvasHeight}px`;
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        treeDust.length = 0;
+        const center = canvasWidth * .53;
+        const top = canvasHeight * .11;
+        const base = canvasHeight * .82;
+        for (let y = top; y < base; y += Math.max(8, canvasHeight * .022)) {
+          const progress = (y - top) / (base - top);
+          const half = Math.max(10, canvasWidth * (.045 + progress * .24));
+          const step = Math.max(10, canvasWidth * .035);
+          for (let x = center - half; x <= center + half; x += step) {
+            if (Math.random() > .12) treeDust.push({ x, y, z: (Math.random() * 2 - 1) * 86, phase: Math.random() * Math.PI * 2, color: palette[Math.floor(Math.random() * palette.length)] });
+          }
+        }
+      };
+
+      const treeTarget = () => {
+        const center = canvasWidth * .53;
+        const top = canvasHeight * .16;
+        const base = canvasHeight * .72;
+        const section = Math.floor(Math.random() * 3);
+        const progress = section / 3 + Math.random() * .3;
+        const y = top + progress * (base - top);
+        const half = canvasWidth * (.08 + progress * .26);
+        return { x: center + (Math.random() * 2 - 1) * half, y, z: (Math.random() * 2 - 1) * 75 };
+      };
+
+      const launchRocket = (target = treeTarget()) => {
+        const x = canvasWidth * (.28 + Math.random() * .5);
+        rockets.push({ x, y: canvasHeight * 1.02, z: -70 + Math.random() * 140, targetX: target.x, targetY: target.y, targetZ: target.z, vy: -(canvasHeight * (.010 + Math.random() * .006)), vz: (Math.random() * 2 - 1) * .9, color: palette[Math.floor(Math.random() * palette.length)], trail: [] });
+      };
+
+      const canvasPoint = (event) => {
+        const rect = fireworksCanvas.getBoundingClientRect();
+        return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+      };
+
+      const explode = (x, y, color, count = 38, z = 0) => {
+        const hue = color || palette[Math.floor(Math.random() * palette.length)];
+        for (let i = 0; i < count; i += 1) {
+          const polar = Math.acos(2 * Math.random() - 1);
+          const azimuth = (Math.PI * 2 * i) / count + Math.random() * .12;
+          const speed = 1.2 + Math.random() * 2.7;
+          const sinPolar = Math.sin(polar);
+          particles.push({ x, y, z, vx: Math.cos(azimuth) * sinPolar * speed, vy: Math.sin(azimuth) * sinPolar * speed, vz: Math.cos(polar) * speed, life: 1, decay: .010 + Math.random() * .012, color: hue, size: 1.6 + Math.random() * 2.2 });
+        }
+        playFireworkNote();
+      };
+
+      const playFireworkNote = () => {
+        if (!soundOn) return;
+        try {
+          audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+          const now = audioContext.currentTime;
+          const oscillator = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(180 + Math.random() * 120, now);
+          oscillator.frequency.exponentialRampToValueAtTime(780 + Math.random() * 180, now + .12);
+          gain.gain.setValueAtTime(.0001, now);
+          gain.gain.exponentialRampToValueAtTime(.045, now + .015);
+          gain.gain.exponentialRampToValueAtTime(.0001, now + .32);
+          oscillator.connect(gain).connect(audioContext.destination);
+          oscillator.start(now);
+          oscillator.stop(now + .34);
+        } catch (error) {
+          // Audio remains optional where the browser blocks Web Audio.
+        }
+      };
+
+      const drawFireworks = () => {
+        fireworkFrame += 1;
+        viewAngle += prefersReducedMotion ? .0007 : .0045;
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        const glow = ctx.createRadialGradient(canvasWidth * .53, canvasHeight * .47, 0, canvasWidth * .53, canvasHeight * .47, canvasWidth * .4);
+        glow.addColorStop(0, 'rgba(255, 216, 111, .18)');
+        glow.addColorStop(1, 'rgba(255, 216, 111, 0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+        treeDust.slice().sort((a, b) => a.z - b.z).forEach((dot) => {
+          const pulse = .42 + (Math.sin(fireworkFrame * .045 + dot.phase) + 1) * .29;
+          const projected = project3D(dot);
+          ctx.globalAlpha = pulse * Math.min(1, .7 + projected.scale * .3);
+          ctx.fillStyle = dot.color;
+          ctx.shadowBlur = 10 * projected.scale;
+          ctx.shadowColor = dot.color;
+          ctx.beginPath();
+          ctx.arc(projected.x, projected.y, (1.55 + pulse * 1.55) * projected.scale, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.shadowBlur = 0;
+
+        rockets.forEach((rocket, index) => {
+          rocket.trail.push({ x: rocket.x, y: rocket.y, alpha: .55 });
+          if (rocket.trail.length > 10) rocket.trail.shift();
+          rocket.y += rocket.vy;
+          rocket.vy += canvasHeight * .00013;
+          rocket.x += (rocket.targetX - rocket.x) * .012;
+          rocket.z += (rocket.targetZ - rocket.z) * .014;
+          rocket.trail.forEach((point, trailIndex) => {
+            ctx.globalAlpha = (trailIndex / rocket.trail.length) * .72;
+            ctx.fillStyle = rocket.color;
+            const projectedTrail = project3D({ x: point.x, y: point.y, z: rocket.z });
+            ctx.beginPath();
+            ctx.arc(projectedTrail.x, projectedTrail.y, 1.8 * projectedTrail.scale, 0, Math.PI * 2);
+            ctx.fill();
+          });
+          const closeEnough = rocket.y <= rocket.targetY || rocket.vy > 0;
+          if (closeEnough) {
+            explode(rocket.x, rocket.y, rocket.color, 32 + Math.floor(Math.random() * 20), rocket.z);
+            rockets.splice(index, 1);
+          }
+        });
+
+        particles.slice().sort((a, b) => a.z - b.z).forEach((particle) => {
+          particle.x += particle.vx;
+          particle.y += particle.vy;
+          particle.z += particle.vz;
+          particle.vx *= .985;
+          particle.vy = particle.vy * .985 + .035;
+          particle.vz *= .985;
+          particle.life -= particle.decay;
+          const projected = project3D(particle);
+          ctx.globalAlpha = Math.max(0, particle.life) * Math.min(1.15, projected.scale);
+          ctx.fillStyle = particle.color;
+          ctx.shadowBlur = 11 * projected.scale;
+          ctx.shadowColor = particle.color;
+          ctx.beginPath();
+          ctx.arc(projected.x, projected.y, particle.size * projected.scale, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        for (let i = particles.length - 1; i >= 0; i -= 1) if (particles[i].life <= 0) particles.splice(i, 1);
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+        fireworkClock += 1;
+        if (!prefersReducedMotion && fireworkClock % 23 === 0) launchRocket();
+        requestAnimationFrame(drawFireworks);
+      };
+
+      window.addEventListener('resize', resizeFireworks, { passive: true });
+      resizeFireworks();
+      launchRocket({ x: canvasWidth * .53, y: canvasHeight * .28 });
+      requestAnimationFrame(drawFireworks);
+
+      const makeParticles = (parent, count, className, seed) => {
+        const fragment = document.createDocumentFragment();
+        for (let i = 0; i < count; i += 1) {
+          const item = document.createElement('i');
+          item.className = className;
+          const left = (i * 37 + seed * 13) % 100;
+          const delay = -((i * 1.73 + seed) % 12);
+          const duration = className === 'snowflake' ? 10 + ((i * 7) % 8) : 2 + ((i * 11) % 4);
+          item.style.left = `${left}%`;
+          item.style.top = `${(i * 29 + seed * 7) % 100}%`;
+          item.style.animationDelay = `${delay}s`;
+          item.style.animationDuration = `${duration}s`;
+          if (className === 'snowflake') item.style.opacity = `${.2 + ((i * 13) % 6) / 10}`;
+          fragment.appendChild(item);
+        }
+        parent.appendChild(fragment);
+      };
+
+      makeParticles(snowfield, 26, 'snowflake', 3);
+      makeParticles(starfield, 22, 'star', 9);
+
+      const setWish = (text) => {
+        wishBubble.classList.add('is-changing');
+        window.setTimeout(() => {
+          wishBubble.textContent = text;
+          wishBubble.classList.remove('is-changing');
+        }, 180);
+      };
+
+      const playChime = () => {
+        if (!soundOn) return;
+        try {
+          audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+          const now = audioContext.currentTime;
+          [523.25, 659.25, 783.99].forEach((frequency, index) => {
+            const oscillator = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            oscillator.type = 'sine';
+            oscillator.frequency.value = frequency;
+            gain.gain.setValueAtTime(0.0001, now + index * .08);
+            gain.gain.exponentialRampToValueAtTime(.08, now + index * .08 + .02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + index * .08 + .34);
+            oscillator.connect(gain).connect(audioContext.destination);
+            oscillator.start(now + index * .08);
+            oscillator.stop(now + index * .08 + .35);
+          });
+        } catch (error) {
+          // Audio is optional on browsers that block Web Audio.
+        }
+      };
+
+      const burst = (origin) => {
+        const colors = ['#e6645e', '#f5c86b', '#8fc7d3', '#fff3d8'];
+        for (let i = 0; i < 16; i += 1) {
+          const bit = document.createElement('i');
+          bit.className = 'confetti';
+          bit.style.background = colors[i % colors.length];
+          bit.style.left = `${origin.x + (Math.random() * 16 - 8)}px`;
+          bit.style.top = `${origin.y + (Math.random() * 12 - 6)}px`;
+          bit.style.setProperty('--dx', `${Math.random() * 180 - 90}px`);
+          bit.style.setProperty('--dy', `${Math.random() * -170 - 30}px`);
+          scene.appendChild(bit);
+          window.setTimeout(() => bit.remove(), 960);
+        }
+      };
+
+      const hearts = (origin) => {
+        for (let i = 0; i < 7; i += 1) {
+          const heart = document.createElement('span');
+          heart.className = 'heart-pop';
+          heart.textContent = i % 2 ? '♡' : '♥';
+          heart.style.left = `${origin.x + (Math.random() * 36 - 18)}px`;
+          heart.style.top = `${origin.y + (Math.random() * 16 - 8)}px`;
+          heart.style.setProperty('--dx', `${Math.random() * 100 - 50}px`);
+          heart.style.setProperty('--dy', `${Math.random() * -95 - 30}px`);
+          scene.appendChild(heart);
+          window.setTimeout(() => heart.remove(), 1100);
+        }
+      };
+
+      const randomWish = () => {
+        let next = Math.floor(Math.random() * wishes.length);
+        if (next === lastWish) next = (next + 1) % wishes.length;
+        lastWish = next;
+        wishChip.textContent = wishes[next];
+        setWish(wishes[next]);
+      };
+
+      const lightTree = () => {
+        treeButton.classList.toggle('party');
+        partyButton.classList.toggle('is-active', treeButton.classList.contains('party'));
+        setWish(treeButton.classList.contains('party') ? '灯亮了，愿望也亮了。' : '轻轻呼吸，冬夜会慢慢发光。');
+        playChime();
+      };
+
+      const enableSound = () => {
+        soundOn = true;
+        soundButton.classList.add('is-active');
+        soundButton.setAttribute('aria-label', '关闭烟花音效');
+        soundButton.setAttribute('title', '关闭烟花音效');
+      };
+
+      treeButton.addEventListener('click', (event) => {
+        enableSound();
+        lightTree();
+        const point = canvasPoint(event);
+        explode(point.x, point.y, '#f5c86b', 58);
+        burst({ x: event.clientX, y: event.clientY });
+      });
+
+      partyButton.addEventListener('click', (event) => {
+        enableSound();
+        lightTree();
+        const point = canvasPoint(event);
+        explode(point.x, point.y, '#f5c86b', 58);
+        burst({ x: event.clientX, y: event.clientY });
+      });
+
+      pigButton.addEventListener('click', (event) => {
+        enableSound();
+        pigButton.classList.remove('is-happy');
+        void pigButton.offsetWidth;
+        pigButton.classList.add('is-happy');
+        speech.textContent = pigLines[Math.floor(Math.random() * pigLines.length)];
+        randomWish();
+        const point = canvasPoint(event);
+        explode(point.x, point.y, '#ffaaa5', 44);
+        burst({ x: event.clientX, y: event.clientY });
+        hearts({ x: event.clientX, y: event.clientY });
+        playChime();
+      });
+
+      soundButton.addEventListener('click', () => {
+        soundOn = !soundOn;
+        soundButton.classList.toggle('is-active', soundOn);
+        soundButton.setAttribute('aria-label', soundOn ? '关闭烟花音效' : '打开烟花音效');
+        soundButton.setAttribute('title', soundOn ? '关闭烟花音效' : '打开烟花音效');
+        setWish(soundOn ? '烟花有声音啦。' : '静音欣赏，也很美。');
+        if (soundOn) playChime();
+      });
+
+      // Keep a tiny deterministic animation clock for smooth custom motion and seek-friendly debugging.
+      let time = 0;
+      let lastTick = null;
+      let playing = false;
+      const tick = (now) => {
+        if (lastTick === null) {
+          lastTick = now;
+          window.__ready = true;
+          requestAnimationFrame(tick);
+          return;
+        }
+        const dt = (now - lastTick) / 1000;
+        lastTick = now;
+        if (playing && !prefersReducedMotion) {
+          time += dt;
+          const sway = Math.sin(time * 1.4) * 2;
+          visual.style.setProperty('--sway', `${sway}px`);
+        }
+        requestAnimationFrame(tick);
+      };
+
+      window.__seek = (nextTime) => {
+        time = Number(nextTime) || 0;
+        visual.style.setProperty('--sway', `${Math.sin(time * 1.4) * 2}px`);
+      };
+
+      document.fonts.ready.then(() => {
+        playing = true;
+        requestAnimationFrame(tick);
+      });
+
+      window.setInterval(() => {
+        if (!treeButton.classList.contains('party') && Math.random() > .35) treeButton.classList.add('party');
+      }, 5000);
+    })();
+  </script>
+</body>
+</html>
